@@ -22,4 +22,4 @@ Aplikacja służąca do wizualizacji zbiorów danych w przestrzeni 3D. Projekt r
 
 ## 👥 Autorzy
 - [Oliwier Stecyk](https://github.com/OliwierStecyk)
-- [Jakub Smaga]( Link ) 
+- [Jakub Smaga](https://github.com/Heimerin) 
