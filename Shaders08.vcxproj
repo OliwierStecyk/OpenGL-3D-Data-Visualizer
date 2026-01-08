@@ -76,6 +76,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DataLoader.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="shadersLoader.cpp" />
     <ClCompile Include="tekstura.cpp" />
@@ -85,9 +86,13 @@
     <None Include="vertex_shader.glsl" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DataLoader.h" />
     <ClInclude Include="GL\glew.h" />
     <ClInclude Include="shaderLoader.h" />
     <ClInclude Include="tekstura.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="dane.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

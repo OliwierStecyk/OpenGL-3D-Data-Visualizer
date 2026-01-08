@@ -18,6 +18,15 @@
 
 #include <vector>
 
+// Wczytywanie plików 
+
+#include "DataLoader.h"
+DataLoader daneProjektu;
+
+
+
+//
+
 //Wymiary okna
 int screen_width = 640;
 int screen_height = 480;
@@ -285,12 +294,19 @@ int main(int argc, char **argv)
 
 	
 	glEnable(GL_DEPTH_TEST);
-	
+		
+	// Wczytywanie plików
+
+	if( daneProjektu.load( "dane.txt" ) ) {
+		printf( "Wczytano %d zestawow danych.\n", ( int ) daneProjektu.allData.size() );
+	}
+
+	//
 
 	programID = loadShaders("vertex_shader.glsl", "fragment_shader.glsl");
 
 	glUseProgram(programID);
-
+	
 
 	lightColor_id = glGetUniformLocation(programID, "lightColor");
     lightPos_id = glGetUniformLocation(programID, "lightPos");
@@ -330,7 +346,7 @@ int main(int argc, char **argv)
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));  // Texture coords
 	glEnableVertexAttribArray(2);
 	
-
+	
 
 	glutMainLoop();				
 
