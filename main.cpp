@@ -1,361 +1,137 @@
 ﻿#include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-#include <time.h>
-#include <fstream>
-
-#include "GL\glew.h"
-#include "GL\freeglut.h"
-
-#include "shaderLoader.h" //narzŕdzie do │adowania i kompilowania shaderˇw z pliku
-#include "tekstura.h"
-
-//funkcje algebry liniowej
-#include "glm/vec3.hpp" // glm::vec3
-#include "glm/vec4.hpp" // glm::vec4
-#include "glm/mat4x4.hpp" // glm::mat4
-#include "glm/gtc/matrix_transform.hpp" // glm::translate, glm::rotate, glm::scale, glm::perspective
-
 #include <vector>
-
-// Wczytywanie plików 
-
+#include <string>
+#include "GL/glew.h"
+#include "GL/freeglut.h"
+#include "shaderLoader.h"
 #include "DataLoader.h"
+#include "SceneManager.h"
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
+// Obiekty
 DataLoader daneProjektu;
+SceneManager scena;
 
+// Okno i Kamera
+int screen_width = 1024, screen_height = 768;
+double kameraX = 45.0, kameraZ = 30.0, kameraD = -1200.0;
+int pozycjaMyszyX, pozycjaMyszyY, mbutton;
+double popX, popZ, popD;
 
+// Shadery i VAO
+GLuint programID, MVP_id, model_id, materialdiffuse_id, materialambient_id, materialspecular_id, materialshine_id, lightColor_id, lightPos_id;
+unsigned int cubeVAO, cubeVBO;
 
-//
+glm::vec3 seriesColors[] = {
+    glm::vec3( 1.0f, 0.4f, 0.6f ), // Różowy
+    glm::vec3( 0.6f, 0.5f, 1.0f ), // Fioletowy
+    glm::vec3( 0.4f, 0.9f, 1.0f ), // Błękitny
+    glm::vec3( 0.5f, 1.0f, 0.5f )  // Zielony
+};
 
-//Wymiary okna
-int screen_width = 640;
-int screen_height = 480;
-
-
-int pozycjaMyszyX; // na ekranie
-int pozycjaMyszyY;
-int mbutton; // wcisiety klawisz myszy
-
-double kameraX = 10;
-double kameraZ = 20;
-double kameraD = -800;
-double kameraPredkosc;
-double kameraKat = -20;
-double kameraPredkoscObrotu;
-double poprzednie_kameraX;
-double poprzednie_kameraZ;
-double poprzednie_kameraD;
-
-double rotation = 0;
-
-//macierze
-
-glm::mat4 MV; //modelview - macierz modelu i świata
-glm::mat4 P;  //projection - macierz projekcji, czyli naszej perspektywy
-glm::mat4 MVP;
-glm::vec3 lightPos(100, 100.0f,500.0f);
-
-GLuint lightColor_id = 0;
-GLuint lightPos_id = 0;
-GLuint viewPos_id = 0;
-GLuint alfa_id = 0;
-GLuint  MVP_id = 0;
-
-
-
-
-GLuint materialambient_id = 0;
-GLuint materialdiffuse_id = 0;
-GLuint materialspecular_id = 0;
-GLfloat materialshine_id = 0;
-
-
-//shaders
-GLuint programID = 0;
-
-
-
-
-unsigned int VBO, sphereVAO,  ebo;
-using namespace std;
-// Sphere vertex data
-std::vector<float> vertices;
-// Indices for the sphere mesh
-std::vector<unsigned int> indices;
-
-
-/*###############################################################*/
-void generateSphere(float radius, unsigned int sectorCount, unsigned int stackCount) {
-	float x, y, z, xy;                               // Vertex position
-	float nx, ny, nz, lengthInv = 1.0f / radius;     // Normal vectors
-	float s, t;                                      // Texture coordinates
-	unsigned int idx;
-
-	// Generate the sphere vertices
-	for (unsigned int i = 0; i <= stackCount; ++i) {
-		float stackAngle = glm::pi<float>() / 2 - i * glm::pi<float>() /
-			stackCount;
-		xy = radius * cosf(stackAngle);  // Radius at current stack
-		z = radius * sinf(stackAngle);   // z-coordinate
-
-		// Add vertices
-		for (unsigned int j = 0; j <= sectorCount; ++j) {
-			float sectorAngle = j * 2 * glm::pi<float>() / sectorCount;
-			x = xy * cosf(sectorAngle);    // X position
-			y = xy * sinf(sectorAngle);    // Y position
-
-			// Normal
-			nx = x * lengthInv;
-			ny = y * lengthInv;
-			nz = z * lengthInv;
-
-			// Texture coordinates (s, t)
-			s = (float)j / sectorCount;
-			t = (float)i / stackCount;
-
-			// Add to the vertex buffer
-			vertices.push_back(x);
-			vertices.push_back(y);
-			vertices.push_back(z);
-			vertices.push_back(nx);
-			vertices.push_back(ny);
-			vertices.push_back(nz);
-			vertices.push_back(s);
-			vertices.push_back(t);
-		}
-	}
-	// Indices for the sphere mesh
-
-	for (unsigned int i = 0; i < stackCount; ++i) {
-		unsigned int k1 = i * (sectorCount + 1);
-		unsigned int k2 = k1 + sectorCount + 1;
-
-		for (unsigned int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
-			if (i != 0) {
-				indices.push_back(k1);
-				indices.push_back(k2);
-				indices.push_back(k1 + 1);
-			}
-
-			if (i != (stackCount - 1)) {
-				indices.push_back(k1 + 1);
-				indices.push_back(k2);
-				indices.push_back(k2 + 1);
-			}
-		}
-	}
-}
-/*###############################################################*/
-void mysz(int button, int state, int x, int y)
-{
-	mbutton = button;
-	switch (state)
-	{
-	case GLUT_UP:
-		break;
-	case GLUT_DOWN:
-		pozycjaMyszyX = x;
-		pozycjaMyszyY = y;
-		poprzednie_kameraX = kameraX;
-		poprzednie_kameraZ = kameraZ;
-		poprzednie_kameraD = kameraD;
-		break;
-
-	}
-}
-/*******************************************/
-void mysz_ruch(int x, int y)
-{
-	if (mbutton == GLUT_LEFT_BUTTON)
-	{
-		kameraX = poprzednie_kameraX - (pozycjaMyszyX - x) * 0.1;
-		kameraZ = poprzednie_kameraZ - (pozycjaMyszyY - y) * 0.1;
-	}
-	if (mbutton == GLUT_RIGHT_BUTTON)
-	{
-		kameraD = poprzednie_kameraD + (pozycjaMyszyY - y) * 0.1;
-	}
-
-}
-/******************************************/
-
-
-void klawisz(GLubyte key, int x, int y)
-{
-	switch (key) {
-
-	case 27:    /* Esc - koniec */
-		exit(1);
-		break;
-
-	case '1':
-		lightPos[1] += 10;
-		break;
-	case '2':
-		lightPos[1] += -10;
-		break;
-
-	}
-	
-	
-}
-/*###############################################################*/
-void rysuj(void)
-{
-	
-
-
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT| GL_STENCIL_BUFFER_BIT);
-
-	MV = glm::mat4(1.0f);  //macierz jednostkowa
-	MV = glm::translate(MV, glm::vec3(0, -200, kameraD -200));
-	MV = glm::rotate(MV, (float)glm::radians(kameraZ ), glm::vec3(1, 0, 0));
-	MV = glm::rotate(MV, (float)glm::radians(kameraX ), glm::vec3(0, 1, 0));
-	
-    // kula
-
-	glUseProgram(programID);
-
-	MVP_id = glGetUniformLocation(programID, "MVP");
-
-	MV = glm::translate(MV, glm::vec3(0, 300, 0));
-	MVP = P * MV;
-	glUniformMatrix4fv(MVP_id, 1, GL_FALSE, &(MVP[0][0]));
-	glUniform3f(lightColor_id, 1.0f, 1.0f, 1.0f);
-	glUniform3f(lightPos_id, lightPos[0], lightPos[1], lightPos[2]);
-
-	///material1
-	glUniform3f(materialambient_id, 0.19125f, 0.0735f, 0.0225f);
-	glUniform3f(materialdiffuse_id, 0.7038f, 0.27048f, 0.0828f);
-	glUniform3f(materialspecular_id, 0.256777f, 0.137622f, 0.086014f);
-	glUniform1f(materialshine_id, 12.8f);
-	glBindVertexArray(sphereVAO);
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
-
-
-
-	//glFlush();
-	glutSwapBuffers();
-
-}
-/*###############################################################*/
-void rozmiar(int width, int height)
-{
-	screen_width = width;
-	screen_height = height;
-
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glViewport(0, 0, screen_width, screen_height);
-
-	P = glm::perspective(glm::radians(60.0f), (GLfloat)screen_width / (GLfloat)screen_height, 1.0f, 2000.0f);
-
-	glutPostRedisplay(); // Przerysowanie sceny
+void setupCube() {
+    float v[] = {
+        -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f,
+        0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f,
+        -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 1.0f, 0.5f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f,
+        0.5f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, -0.5f, 1.0f, 0.5f, 0.0f, 0.0f, 1.0f, -0.5f, 0.0f, 0.5f, 0.0f, 0.0f, 1.0f,
+        -0.5f, 1.0f, 0.5f, -1.0f, 0.0f, 0.0f, -0.5f, 1.0f, -0.5f, -1.0f, 0.0f, 0.0f, -0.5f, 0.0f, -0.5f, -1.0f, 0.0f, 0.0f,
+        -0.5f, 0.0f, -0.5f, -1.0f, 0.0f, 0.0f, -0.5f, 0.0f, 0.5f, -1.0f, 0.0f, 0.0f, -0.5f, 1.0f, 0.5f, -1.0f, 0.0f, 0.0f,
+        0.5f, 1.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.5f, 1.0f, -0.5f, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f, -0.5f, 1.0f, 0.0f, 0.0f,
+        0.5f, 0.0f, -0.5f, 1.0f, 0.0f, 0.0f, 0.5f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.5f, 1.0f, 0.5f, 1.0f, 0.0f, 0.0f,
+        -0.5f, 1.0f, -0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, -0.5f, 0.0f, 1.0f, 0.0f, 0.5f, 1.0f, 0.5f, 0.0f, 1.0f, 0.0f,
+        0.5f, 1.0f, 0.5f, 0.0f, 1.0f, 0.0f, -0.5f, 1.0f, 0.5f, 0.0f, 1.0f, 0.0f, -0.5f, 1.0f, -0.5f, 0.0f, 1.0f, 0.0f,
+        -0.5f, 0.0f, -0.5f, 0.0f, -1.0f, 0.0f, 0.5f, 0.0f, -0.5f, 0.0f, -1.0f, 0.0f, 0.5f, 0.0f, 0.5f, 0.0f, -1.0f, 0.0f,
+        0.5f, 0.0f, 0.5f, 0.0f, -1.0f, 0.0f, -0.5f, 0.0f, 0.5f, 0.0f, -1.0f, 0.0f, -0.5f, 0.0f, -0.5f, 0.0f, -1.0f, 0.0f
+    };
+    glGenVertexArrays( 1, &cubeVAO ); glGenBuffers( 1, &cubeVBO );
+    glBindVertexArray( cubeVAO ); glBindBuffer( GL_ARRAY_BUFFER, cubeVBO );
+    glBufferData( GL_ARRAY_BUFFER, sizeof( v ), v, GL_STATIC_DRAW );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) 0 ); glEnableVertexAttribArray( 0 );
+    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) ); glEnableVertexAttribArray( 1 );
 }
 
-/*###############################################################*/
-void idle()
-{
+void rysuj( void ) {
+    glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+    glm::mat4 Projection = glm::perspective( glm::radians( 45.0f ), ( float ) screen_width / screen_height, 0.1f, 5000.0f );
+    glm::mat4 View = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0, -100, kameraD ) );
+    View = glm::rotate( View, ( float ) glm::radians( kameraZ ), glm::vec3( 1, 0, 0 ) );
+    View = glm::rotate( View, ( float ) glm::radians( kameraX ), glm::vec3( 0, 1, 0 ) );
 
-	glutPostRedisplay();
+    glUseProgram( programID );
+    scena.drawGrid( MVP_id, Projection, View, 600, 50 );
+    scena.drawAxes( MVP_id, Projection, View );
+
+    glBindVertexArray( cubeVAO );
+    for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+        glm::vec3 col = seriesColors[ i % 4 ];
+        glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
+        for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
+            float val = daneProjektu.allData[ i ].values[ j ];
+            float h = val * 15.0f;
+            float posX = ( float ) j * 80.0f - 200.0f;
+            float zPos = ( float ) i * 150.0f - 100.0f;
+            glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
+            Model = glm::scale( Model, glm::vec3( 40.0f, h, 40.0f ) );
+            glm::mat4 MVP_final = Projection * View * Model;
+            glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
+            glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
+            glDrawArrays( GL_TRIANGLES, 0, 36 );
+        }
+    }
+    glutSwapBuffers();
 }
 
-/*###############################################################*/
-
-
-
-void timer(int value) {
-
-	
-
-	glutTimerFunc(20, timer, 0);
-}
-/*###############################################################*/
-
-
-
-int main(int argc, char **argv)
-{
-	glutInit(&argc, argv);
-	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH | GLUT_STENCIL);
-	glutInitWindowSize(screen_width, screen_height);
-	glutInitWindowPosition(0, 0);
-	glutCreateWindow("Przyklad 8");
-
-	glewInit(); //init rozszerzeszeń OpenGL z biblioteki GLEW
-
-	glutDisplayFunc(rysuj);			// def. funkcji rysuj¦cej
-	glutIdleFunc(idle);			// def. funkcji rysuj¦cej w czasie wolnym procesoora (w efekcie: ci¦gle wykonywanej)
-	//glutTimerFunc(20, timer, 0);
-	glutReshapeFunc(rozmiar); // def. obs-ugi zdarzenia resize (GLUT)
-
-	glutKeyboardFunc(klawisz);		// def. obsługi klawiatury
-	glutMouseFunc(mysz); 		// def. obsługi zdarzenia przycisku myszy (GLUT)
-	glutMotionFunc(mysz_ruch); // def. obsługi zdarzenia ruchu myszy (GLUT)
-
-	
-	glEnable(GL_DEPTH_TEST);
-		
-	// Wczytywanie plików
-
-	if( daneProjektu.load( "dane.txt" ) ) {
-		printf( "Wczytano %d zestawow danych.\n", ( int ) daneProjektu.allData.size() );
-	}
-
-	//
-
-	programID = loadShaders("vertex_shader.glsl", "fragment_shader.glsl");
-
-	glUseProgram(programID);
-	
-
-	lightColor_id = glGetUniformLocation(programID, "lightColor");
-    lightPos_id = glGetUniformLocation(programID, "lightPos");
-	
-
-	materialambient_id = glGetUniformLocation(programID, "material.ambient");
-	materialdiffuse_id = glGetUniformLocation(programID, "material.diffuse");
-	materialspecular_id = glGetUniformLocation(programID, "material.specular");
-	materialshine_id = glGetUniformLocation(programID, "material.shininess");
-	alfa_id = glGetUniformLocation(programID, "alfa");
-
-	
-	generateSphere(250.0f, 50, 50);
-
-	glGenBuffers(1, &VBO);
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &ebo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), indices.data(), GL_STATIC_DRAW);
-
-
-
-	glGenVertexArrays(1, &sphereVAO);
-
-	glBindVertexArray(sphereVAO);
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);  // Position
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));  // Normal
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));  // Texture coords
-	glEnableVertexAttribArray(2);
-	
-	
-
-	glutMainLoop();				
-
-	glDeleteVertexArrays(1, &sphereVAO);
-
-	glDeleteBuffers(1, &VBO);
-
-
-	return(0);
-
+void mysz( int b, int s, int x, int y ) { mbutton = b; if( s == GLUT_DOWN ) { pozycjaMyszyX = x; pozycjaMyszyY = y; popX = kameraX; popZ = kameraZ; popD = kameraD; } }
+void ruch( int x, int y ) {
+    if( mbutton == GLUT_LEFT_BUTTON ) { kameraX = popX + ( x - pozycjaMyszyX ) * 0.2; kameraZ = popZ + ( y - pozycjaMyszyY ) * 0.2; }
+    if( mbutton == GLUT_RIGHT_BUTTON ) { kameraD = popD + ( y - pozycjaMyszyY ) * 1.5; }
+    glutPostRedisplay();
 }
 
+void rozmiar( int w, int h ) { screen_width = w; screen_height = h; glViewport( 0, 0, w, h ); }
+void klawisz( GLubyte key, int x, int y ) { if( key == 27 ) exit( 0 ); }
+
+int main( int argc, char** argv ) {
+    glutInit( &argc, argv );
+    glutInitDisplayMode( GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH );
+    glutInitWindowSize( screen_width, screen_height );
+    glutCreateWindow( "Histogram 3D" );
+
+    glewInit();
+    glEnable( GL_DEPTH_TEST );
+    
+    glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
+
+    daneProjektu.load( "dane.txt" );
+    programID = loadShaders( "vertex_shader.glsl", "fragment_shader.glsl" );
+
+    MVP_id = glGetUniformLocation( programID, "MVP" );
+    model_id = glGetUniformLocation( programID, "model" );
+    materialdiffuse_id = glGetUniformLocation( programID, "material.diffuse" );
+    materialambient_id = glGetUniformLocation( programID, "material.ambient" );
+    materialspecular_id = glGetUniformLocation( programID, "material.specular" );
+    materialshine_id = glGetUniformLocation( programID, "material.shininess" );
+    lightColor_id = glGetUniformLocation( programID, "lightColor" );
+    lightPos_id = glGetUniformLocation( programID, "lightPos" );
+
+    glUseProgram( programID );
+    glUniform3f( lightColor_id, 1, 1, 1 );
+    glUniform3f( lightPos_id, 200, 600, 200 );
+    glUniform3f( materialambient_id, 0.2f, 0.2f, 0.2f );
+    glUniform3f( materialspecular_id, 0.5f, 0.5f, 0.5f );
+    glUniform1f( materialshine_id, 32.0f );
+    glUniform1f( glGetUniformLocation( programID, "alfa" ), 1.0f );
+
+    setupCube();
+    glutDisplayFunc( rysuj );
+    glutIdleFunc( rysuj );
+    glutReshapeFunc( rozmiar );
+    glutMouseFunc( mysz );
+    glutMotionFunc( ruch );
+    glutKeyboardFunc( klawisz );
+    glutMainLoop();
+    return 0;
+}

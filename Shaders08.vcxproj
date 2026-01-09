@@ -78,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="DataLoader.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SceneManager.cpp" />
     <ClCompile Include="shadersLoader.cpp" />
     <ClCompile Include="tekstura.cpp" />
   </ItemGroup>
@@ -88,6 +89,7 @@
   <ItemGroup>
     <ClInclude Include="DataLoader.h" />
     <ClInclude Include="GL\glew.h" />
+    <ClInclude Include="SceneManager.h" />
     <ClInclude Include="shaderLoader.h" />
     <ClInclude Include="tekstura.h" />
   </ItemGroup>

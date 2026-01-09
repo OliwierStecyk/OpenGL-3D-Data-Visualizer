@@ -1,20 +1,15 @@
-#version 330 
-
+#version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 vtexcoord0;
 
-
-out vec2 texcoord0;
 out vec3 FragPos;
 out vec3 Normal;
 
 uniform mat4 MVP;
-void main()
-{
-    FragPos = aPos;
-    Normal = aNormal;  
-    texcoord0=vtexcoord0;
-    gl_Position = MVP*vec4(aPos, 1.0);
+uniform mat4 model;
 
+void main() {
+    FragPos = vec3(model * vec4(aPos, 1.0));
+    Normal = mat3(transpose(inverse(model))) * aNormal;  
+    gl_Position = MVP * vec4(aPos, 1.0);
 }
