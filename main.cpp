@@ -193,7 +193,7 @@ void rysuj( void ) {
             float posX = j * stepX + stepX / 2.0f;
             std::string label = "D" + std::to_string( j + 1 );
             float tz = frontZ + (dirZ * 40.0f);
-            scena.drawString( posX - 10.0f, -40.0f, tz, label );
+            scena.drawString( posX - 10.0f, 0, tz, label );
         }
     }
 
