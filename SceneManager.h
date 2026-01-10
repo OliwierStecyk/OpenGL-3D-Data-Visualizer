@@ -8,13 +8,13 @@
 
 class SceneManager {
 public:
-    // Rysuje siatkę o wymiarach w, h, d
-    void drawGrid( GLuint mvpID, glm::mat4 projection, glm::mat4 view, float w, float h, float d, int step );
+    // Rysuje siatkę na tylnych ścianach (backX, backZ)
+    void drawGrid( GLuint mvpID, glm::mat4 projection, glm::mat4 view, float w, float h, float d, int step, float backX, float backZ );
 
-    // Rysuje osie, pudełko (bez góry) i podstawowe podpisy osi (X, Y, Z)
-    void drawAxes( GLuint mvpID, glm::mat4 projection, glm::mat4 view, float w, float h, float d, float maxVal );
+    // Rysuje ramki, oraz podpisy na PRZEDNICH krawędziach (frontX, frontZ)
+    void drawAxes( GLuint mvpID, glm::mat4 projection, glm::mat4 view, float w, float h, float d, float maxVal,
+        float backX, float backZ, float frontX, float frontZ );
 
-    // Pomocnicza funkcja do rysowania tekstu w przestrzeni 3D
     void drawString( float x, float y, float z, const std::string& text );
 };
 
