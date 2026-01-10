@@ -13,6 +13,22 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+/*
+Scieżki do plikow
+
+"DANE/dane.txt"    
+"DANE/Gielda.txt"       - duzo kolumn 
+"DANE/Klimat_ekstremalny.txt"       - duzo kolumn 
+"DANE/Matematyka_fale.txt"      - duzo kolumn 
+"DANE/Stress_Test.txt"      - malo kolumn 
+
+"DANE/Zuzycie_energi.txt"       - malo kolumn
+"DANE/Ruch_strony.txt"      - malo kolumn
+"DANE/Sprzedarz.txt"      - malo kolumn
+
+*/
+const std::string DATA_PATH = "DANE/Zuzycie_energi.txt";
+
 // Obiekty
 DataLoader daneProjektu;
 SceneManager scena;
@@ -26,7 +42,7 @@ double popX, popZ, popD;
 // Shadery
 GLuint programID, MVP_id, model_id, materialdiffuse_id, materialambient_id, materialspecular_id, materialshine_id, lightColor_id, lightPos_id;
 unsigned int cubeVAO, cubeVBO;
-
+unsigned int lineVAO, lineVBO;
 const float CHART_WIDTH = 600.0f;
 const float CHART_HEIGHT = 400.0f;
 const float CHART_DEPTH = 600.0f;
@@ -37,8 +53,8 @@ glm::vec3 seriesColors[] = {
     glm::vec3( 0.4f, 0.9f, 1.0f ),
     glm::vec3( 0.5f, 1.0f, 0.5f )
 };
-
 void setupCube() {
+    // --- ISTNIEJĄCY KOD DLA WYPEŁNIENIA (v[]) ---
     float v[] = {
         -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f,
         0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f,
@@ -56,8 +72,33 @@ void setupCube() {
     glGenVertexArrays( 1, &cubeVAO ); glGenBuffers( 1, &cubeVBO );
     glBindVertexArray( cubeVAO ); glBindBuffer( GL_ARRAY_BUFFER, cubeVBO );
     glBufferData( GL_ARRAY_BUFFER, sizeof( v ), v, GL_STATIC_DRAW );
-    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)0 ); glEnableVertexAttribArray( 0 );
-    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)(3 * sizeof( float )) ); glEnableVertexAttribArray( 1 );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) 0 ); glEnableVertexAttribArray( 0 );
+    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) ); glEnableVertexAttribArray( 1 );
+
+    // --- NOWY KOD DLA CZYSTYCH KRAWĘDZI (BEZ PRZEKĄTNYCH) ---
+    float lines[] = {
+        // Dolna rama
+        -0.5f, 0.0f, -0.5f, 0.5f, 0.0f, -0.5f,
+        0.5f, 0.0f, -0.5f, 0.5f, 0.0f, 0.5f,
+        0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f,
+        -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, -0.5f,
+        // Górna rama
+        -0.5f, 1.0f, -0.5f, 0.5f, 1.0f, -0.5f,
+        0.5f, 1.0f, -0.5f, 0.5f, 1.0f, 0.5f,
+        0.5f, 1.0f, 0.5f, -0.5f, 1.0f, 0.5f,
+        -0.5f, 1.0f, 0.5f, -0.5f, 1.0f, -0.5f,
+        // Pionowe krawędzie
+        -0.5f, 0.0f, -0.5f, -0.5f, 1.0f, -0.5f,
+        0.5f, 0.0f, -0.5f, 0.5f, 1.0f, -0.5f,
+        0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f,
+        -0.5f, 0.0f, 0.5f, -0.5f, 1.0f, 0.5f
+    };
+
+    glGenVertexArrays( 1, &lineVAO ); glGenBuffers( 1, &lineVBO );
+    glBindVertexArray( lineVAO ); glBindBuffer( GL_ARRAY_BUFFER, lineVBO );
+    glBufferData( GL_ARRAY_BUFFER, sizeof( lines ), lines, GL_STATIC_DRAW );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), ( void* ) 0 );
+    glEnableVertexAttribArray( 0 );
 }
 
 void rysuj( void ) {
@@ -140,24 +181,38 @@ void rysuj( void ) {
 
         for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
             glm::vec3 col = seriesColors[ i % 4 ];
-            glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
             float zPos = i * stepZ + stepZ / 2.0f;
 
             for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
                 float val = daneProjektu.allData[ i ].values[ j ];
-                float h = (val / maxVal) * CHART_HEIGHT;
+                float h = ( val / maxVal ) * CHART_HEIGHT;
                 if( h < 0.1f ) h = 0.1f;
 
                 float posX = j * stepX + stepX / 2.0f;
+
+                // Macierze
                 glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
                 Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
-
                 glm::mat4 MVP_final = Projection * View * Model;
+
                 glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
                 glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
+
+                // 1. RYSOWANIE WYPEŁNIENIA (Kolor)
+                glBindVertexArray( cubeVAO );
+                glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+                glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
                 glDrawArrays( GL_TRIANGLES, 0, 36 );
+
+                // 2. RYSOWANIE CZYSTYCH KRAWĘDZI (Czarny obrys)
+                glBindVertexArray( lineVAO );
+                glLineWidth( 2.0f ); // Grubość obramowania
+                glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f ); // Czarny kolor
+                glDrawArrays( GL_LINES, 0, 24 ); // 12 linii * 2 punkty = 24
             }
         }
+        // Powrót do trybu wypełnienia dla innych elementów
+        glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
     }
 
     // 3. Etykiety (Text)
@@ -221,7 +276,7 @@ int main( int argc, char** argv ) {
     glEnable( GL_DEPTH_TEST );
     glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
 
-    if( !daneProjektu.load( "dane.txt" ) ) return 1;
+    if( !daneProjektu.load( DATA_PATH ) ) return 1;
     programID = loadShaders( "vertex_shader.glsl", "fragment_shader.glsl" );
 
     MVP_id = glGetUniformLocation( programID, "MVP" );

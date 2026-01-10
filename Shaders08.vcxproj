@@ -93,9 +93,6 @@
     <ClInclude Include="shaderLoader.h" />
     <ClInclude Include="tekstura.h" />
   </ItemGroup>
-  <ItemGroup>
-    <Text Include="dane.txt" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

@@ -129,7 +129,7 @@ void SceneManager::drawAxes( GLuint mvpID, glm::mat4 projection, glm::mat4 view,
     float titleY_X = backX + (dirBackX * 40.0f);
     if( dirBackX < 0 ) titleY_X -= 40.0f;
     // Podnosimy tytuł nad górną krawędź przedniego słupka
-    drawString( titleY_X, h + 20.0f, frontZ, "Wartosc (Y)" );
+    drawString( titleY_X, h + 30.0f, frontZ, "Wartosc (Y)" );
 
     // 2. Tytuł Osi X (przy przedniej krawędzi frontZ)
     drawString( w / 2.0f - 50.0f, -50.0f, frontZ + (dirZ * 40.0f), "Osi Pomiary (X)" );
