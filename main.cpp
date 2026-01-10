@@ -26,9 +26,10 @@ Scieżki do plikow
 "DANE/Zuzycie_energi.txt"       - malo kolumn
 "DANE/Ruch_strony.txt"      - malo kolumn
 "DANE/Sprzedarz.txt"      - malo kolumn
+"DANE/Klimat_lata.txt"      - 4 kolumny (sezony)
+:DANE/dane_histogram.txt"   - 12 kolumn (miesiace)
 
 */
-
 // --- KONFIGURACJA ---
 const std::string DATA_PATH = "DANE/dane_histogram.txt";
 
