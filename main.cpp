@@ -26,11 +26,13 @@ Scieżki do plikow
 "DANE/Zuzycie_energi.txt"       - malo kolumn
 "DANE/Ruch_strony.txt"      - malo kolumn
 "DANE/Sprzedarz.txt"      - malo kolumn
+"DANE/Klimat_lata.txt"      - 4 kolumny (sezony)
+:DANE/dane_histogram.txt"   - 12 kolumn (miesiace)
 
 */
 
 // --- KONFIGURACJA ---
-const std::string DATA_PATH = "DANE/dane_histogram.txt"; // lub "dane.txt"
+const std::string DATA_PATH = "DANE/Klimat_lata.txt"; // lub "dane.txt"
 
 // TYPY WYKRESÓW
 enum ChartType {
@@ -39,7 +41,7 @@ enum ChartType {
 };
 
 // ZMIEŃ TĘ STAŁĄ, ABY PRZEŁĄCZAĆ WIDOK
-const ChartType CURRENT_CHART_TYPE = CHART_HISTOGRAM;
+const ChartType CURRENT_CHART_TYPE = CHART_BAR;
 
 // --------------------
 
@@ -67,6 +69,16 @@ glm::vec3 seriesColors[] = {
     glm::vec3( 0.2f, 0.2f, 0.9f ), // Niebieski
     glm::vec3( 0.2f, 0.7f, 0.2f ), // Zielony
     glm::vec3( 0.9f, 0.2f, 0.2f )  // Czerwony
+};
+
+glm::vec3 seriesColorsSeason[] = {
+    glm::vec3( 0.40f, 0.60f, 0.90f ), // Głęboki błękit
+    glm::vec3( 0.60f, 0.95f, 0.98f ), // Jasny błękit
+    glm::vec3( 0.65f, 0.60f, 0.95f ), // Fioletowy
+    glm::vec3( 0.98f, 0.45f, 0.65f ), // Różowy
+    glm::vec3( 1.00f, 0.70f, 0.40f ), // Pastelowy pomarańcz
+    glm::vec3( 0.90f, 0.40f, 0.30f ), // Ciepła czerwień
+    glm::vec3( 0.70f, 0.20f, 0.20f )  // Głęboka czerwień (Dodany dla 7-mej serii)
 };
 
 void setupCube() {
@@ -181,7 +193,7 @@ void rysuj( void ) {
             float barDepth = 10.0f;      // Cienkie w Z
 
             for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-                glm::vec3 col = seriesColors[ i % 4 ];
+                glm::vec3 col = ( numCols == 4 ) ? seriesColorsSeason[ i % 7 ] : seriesColors[ i % 4 ];
                 float zPos = i * stepZ + stepZ / 2.0f;
 
                 for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
@@ -220,7 +232,7 @@ void rysuj( void ) {
             float barDepth = stepZ * 0.7f;
 
             for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-                glm::vec3 col = seriesColors[ i % 4 ];
+                glm::vec3 col = ( numCols == 4 ) ? seriesColorsSeason[ i % 7 ] : seriesColors[ i % 4 ];
                 float zPos = i * stepZ + stepZ / 2.0f;
 
                 for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
@@ -236,6 +248,8 @@ void rysuj( void ) {
 
                     glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
                     glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
+
+                    
 
                     // Wypełnienie
                     glBindVertexArray( cubeVAO );
@@ -265,25 +279,46 @@ void rysuj( void ) {
     if( numSeries > 0 ) {
         float stepZ = CHART_DEPTH / numSeries;
         float stepX = CHART_WIDTH / daneProjektu.allData[ 0 ].values.size();
-        float dirX = (frontX > CHART_WIDTH / 2.0f) ? 1.0f : -1.0f;
-        float dirZ = (frontZ > CHART_DEPTH / 2.0f) ? 1.0f : -1.0f;
+        float dirX = ( frontX > CHART_WIDTH / 2.0f ) ? 1.0f : -1.0f;
+        float dirZ = ( frontZ > CHART_DEPTH / 2.0f ) ? 1.0f : -1.0f;
 
-        // Podpisy Serii (Z)
-        for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+        // --- PODPISY SERII (Z) - Lata ---
+        // DOPISANE: Jeśli masz dużo lat (np. 30), podpisuj co 5 lat, żeby nie było bałaganu
+        int skipZ = ( numSeries > 15 ) ? 5 : 1;
+
+        for( size_t i = 0; i < daneProjektu.allData.size(); i += skipZ ) {
             float zPos = i * stepZ + stepZ / 2.0f;
-            float tx = frontX + (dirX * 40.0f);
+            float tx = frontX + ( dirX * 40.0f );
             if( dirX < 0 ) tx -= 50.0f;
             scena.drawString( tx, 0.0f, zPos, daneProjektu.allData[ i ].label );
         }
 
-        // Podpisy Danych (X)
-        // Jeśli histogram (dużo danych), podpisuj co 5-ty, żeby nie było bałaganu
-        int skip = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? 5 : 1;
+        // --- PODPISY DANYCH (X) - Sezony lub D1, D2... ---
+        int skipX = ( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) ? 5 : 1;
 
-        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j += skip ) {
+        // DOPISANE: Tablica z nazwami dla pliku klimatycznego
+        const char* nazwySezonow[] = { "Spring", "Summer", "Autumn", "Winter" };
+        size_t liczbaKolumn = daneProjektu.allData[ 0 ].values.size();
+
+        for( size_t j = 0; j < liczbaKolumn; j += skipX ) {
             float posX = j * stepX + stepX / 2.0f;
-            std::string label = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? std::to_string( j ) : "D" + std::to_string( j + 1 );
-            float tz = frontZ + (dirZ * 40.0f);
+            std::string label;
+
+            // LOGIKA WYBORU PODPISU:
+            if( liczbaKolumn == 4 && j < 4 ) {
+                // Jeśli są dokładnie 4 kolumny, użyj nazw sezonów
+                label = nazwySezonow[ j ];
+            }
+            else if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
+                // Jeśli to histogram, użyj numerów
+                label = std::to_string( j );
+            }
+            else {
+                // W każdym innym przypadku użyj Twojego D1, D2...
+                label = "D" + std::to_string( j + 1 );
+            }
+
+            float tz = frontZ + ( dirZ * 40.0f );
             scena.drawString( posX - 10.0f, 0, tz, label );
         }
     }
