@@ -30,18 +30,14 @@ Scieżki do plikow
 */
 
 // --- KONFIGURACJA ---
-const std::string DATA_PATH = "DANE/dane_histogram.txt"; // lub "dane.txt"
+const std::string DATA_PATH = "DANE/dane_histogram.txt";
 
-// TYPY WYKRESÓW
 enum ChartType {
-    CHART_BAR,      // Klasyczne grube słupki
-    CHART_HISTOGRAM // Cienkie ścianki (wodospad)
+    CHART_BAR,
+    CHART_HISTOGRAM
 };
 
-// ZMIEŃ TĘ STAŁĄ, ABY PRZEŁĄCZAĆ WIDOK
 const ChartType CURRENT_CHART_TYPE = CHART_HISTOGRAM;
-
-// --------------------
 
 // Obiekty
 DataLoader daneProjektu;
@@ -62,15 +58,14 @@ const float CHART_WIDTH = 600.0f;
 const float CHART_HEIGHT = 400.0f;
 const float CHART_DEPTH = 600.0f;
 
-glm::vec3 seriesColors[] = {
-    glm::vec3( 0.9f, 0.9f, 0.2f ), // Żółty
-    glm::vec3( 0.2f, 0.2f, 0.9f ), // Niebieski
-    glm::vec3( 0.2f, 0.7f, 0.2f ), // Zielony
-    glm::vec3( 0.9f, 0.2f, 0.2f )  // Czerwony
+std::vector<glm::vec3> seriesColors = {
+    glm::vec3( 0.9f, 0.9f, 0.2f ),
+    glm::vec3( 0.2f, 0.2f, 0.9f ),
+    glm::vec3( 0.2f, 0.7f, 0.2f ),
+    glm::vec3( 0.9f, 0.2f, 0.2f )
 };
 
 void setupCube() {
-    // Wypełnienie (Cube)
     float v[] = {
         -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f,
         0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f,
@@ -91,22 +86,13 @@ void setupCube() {
     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)0 ); glEnableVertexAttribArray( 0 );
     glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)(3 * sizeof( float )) ); glEnableVertexAttribArray( 1 );
 
-    // Krawędzie (Line Loop)
     float lines[] = {
-        -0.5f, 0.0f, -0.5f, 0.5f, 0.0f, -0.5f,
-        0.5f, 0.0f, -0.5f, 0.5f, 0.0f, 0.5f,
-        0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f,
-        -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, -0.5f,
-
-        -0.5f, 1.0f, -0.5f, 0.5f, 1.0f, -0.5f,
-        0.5f, 1.0f, -0.5f, 0.5f, 1.0f, 0.5f,
-        0.5f, 1.0f, 0.5f, -0.5f, 1.0f, 0.5f,
-        -0.5f, 1.0f, 0.5f, -0.5f, 1.0f, -0.5f,
-
-        -0.5f, 0.0f, -0.5f, -0.5f, 1.0f, -0.5f,
-        0.5f, 0.0f, -0.5f, 0.5f, 1.0f, -0.5f,
-        0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f,
-        -0.5f, 0.0f, 0.5f, -0.5f, 1.0f, 0.5f
+        -0.5f, 0.0f, -0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 0.0f, 0.5f,
+        0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, -0.5f,
+        -0.5f, 1.0f, -0.5f, 0.5f, 1.0f, -0.5f, 0.5f, 1.0f, -0.5f, 0.5f, 1.0f, 0.5f,
+        0.5f, 1.0f, 0.5f, -0.5f, 1.0f, 0.5f, -0.5f, 1.0f, 0.5f, -0.5f, 1.0f, -0.5f,
+        -0.5f, 0.0f, -0.5f, -0.5f, 1.0f, -0.5f, 0.5f, 0.0f, -0.5f, 0.5f, 1.0f, -0.5f,
+        0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f, -0.5f, 0.0f, 0.5f, -0.5f, 1.0f, 0.5f
     };
     glGenVertexArrays( 1, &lineVAO ); glGenBuffers( 1, &lineVBO );
     glBindVertexArray( lineVAO ); glBindBuffer( GL_ARRAY_BUFFER, lineVBO );
@@ -118,7 +104,6 @@ void setupCube() {
 void rysuj( void ) {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    // Obliczanie macierzy widoku i sortowanie narożników
     glm::mat4 Projection = glm::perspective( glm::radians( 45.0f ), (float)screen_width / screen_height, 0.1f, 5000.0f );
     glm::mat4 View = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0, 0, kameraD ) );
     View = glm::rotate( View, (float)glm::radians( kameraZ ), glm::vec3( 1, 0, 0 ) );
@@ -132,10 +117,8 @@ void rysuj( void ) {
         glm::vec4( 0.0f, 0.0f, CHART_DEPTH, 1.0f )
     };
 
-    float maxZ = -FLT_MAX;
-    float minZ = FLT_MAX;
-    int nearestIdx = 0;
-    int farthestIdx = 0;
+    float maxZ = -FLT_MAX; float minZ = FLT_MAX;
+    int nearestIdx = 0; int farthestIdx = 0;
 
     for( int i = 0; i < 4; i++ ) {
         glm::vec4 viewPos = View * corners[ i ];
@@ -148,21 +131,16 @@ void rysuj( void ) {
     float frontX = corners[ nearestIdx ].x;
     float frontZ = corners[ nearestIdx ].z;
 
-    // 1. Rysowanie środowiska
     glUseProgram( programID );
-
-    // NAPRAWA KOLORU SIATKI: Resetujemy kolor w shaderze na jasnoszary
     glUniform3f( materialdiffuse_id, 0.85f, 0.85f, 0.85f );
     scena.drawGrid( MVP_id, Projection, View, CHART_WIDTH, CHART_HEIGHT, CHART_DEPTH, 50, backX, backZ );
-
-    // Resetujemy kolor na czarny dla ramek
     glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
-    scena.drawAxes( MVP_id, Projection, View, CHART_WIDTH, CHART_HEIGHT, CHART_DEPTH, daneProjektu.getMaxValue(),
-        backX, backZ, frontX, frontZ );
+    scena.drawAxes( MVP_id, Projection, View, CHART_WIDTH, CHART_HEIGHT, CHART_DEPTH, daneProjektu.getMaxValue(), backX, backZ, frontX, frontZ );
 
-    // 2. Rysowanie DANYCH
     glUseProgram( programID );
     float numSeries = (float)daneProjektu.allData.size();
+    std::vector<std::string> seriesNames;
+
     if( numSeries > 0 ) {
         float numCols = (float)daneProjektu.allData[ 0 ].values.size();
         float maxVal = daneProjektu.getMaxValue();
@@ -170,80 +148,51 @@ void rysuj( void ) {
 
         float stepZ = CHART_DEPTH / numSeries;
         float stepX = CHART_WIDTH / numCols;
-
         glBindVertexArray( cubeVAO );
 
-        // -------------------------------------------------------------
-        // IF 1: LOGIKA DLA HISTOGRAMU
-        // -------------------------------------------------------------
-        if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
-            float barWidth = stepX;      // Pełna szerokość (stykają się)
-            float barDepth = 10.0f;      // Cienkie w Z
+        for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+            seriesNames.push_back( daneProjektu.allData[ i ].label );
+            glm::vec3 col = seriesColors[ i % seriesColors.size() ];
+            float zPos = i * stepZ + stepZ / 2.0f;
 
-            for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-                glm::vec3 col = seriesColors[ i % 4 ];
-                float zPos = i * stepZ + stepZ / 2.0f;
-
+            if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
+                float barWidth = stepX;
+                float barDepth = 10.0f;
                 for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
                     float val = daneProjektu.allData[ i ].values[ j ];
-                    float h = (val / maxVal) * CHART_HEIGHT;
-                    if( h < 0.1f ) h = 0.1f;
-
+                    float h = (val / maxVal) * CHART_HEIGHT; if( h < 0.1f ) h = 0.1f;
                     float posX = j * stepX + stepX / 2.0f;
-
                     glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
                     Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
                     glm::mat4 MVP_final = Projection * View * Model;
-
                     glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
                     glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
-
-                    // Wypełnienie
                     glBindVertexArray( cubeVAO );
                     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
                     glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
                     glDrawArrays( GL_TRIANGLES, 0, 36 );
-
-                    // Kreski oddzielające (Obrys) - chcemy je też w histogramie!
                     glBindVertexArray( lineVAO );
                     glLineWidth( 1.0f );
                     glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
                     glDrawArrays( GL_LINES, 0, 24 );
                 }
             }
-        }
-        // -------------------------------------------------------------
-        // IF 2 (ELSE): LOGIKA DLA KLASYCZNYCH SŁUPKÓW (BAR)
-        // -------------------------------------------------------------
-        else {
-            float barWidth = stepX * 0.7f; // Przerwy między słupkami
-            float barDepth = stepZ * 0.7f;
-
-            for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-                glm::vec3 col = seriesColors[ i % 4 ];
-                float zPos = i * stepZ + stepZ / 2.0f;
-
+            else {
+                float barWidth = stepX * 0.7f;
+                float barDepth = stepZ * 0.7f;
                 for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
                     float val = daneProjektu.allData[ i ].values[ j ];
-                    float h = (val / maxVal) * CHART_HEIGHT;
-                    if( h < 0.1f ) h = 0.1f;
-
+                    float h = (val / maxVal) * CHART_HEIGHT; if( h < 0.1f ) h = 0.1f;
                     float posX = j * stepX + stepX / 2.0f;
-
                     glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
                     Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
                     glm::mat4 MVP_final = Projection * View * Model;
-
                     glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
                     glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
-
-                    // Wypełnienie
                     glBindVertexArray( cubeVAO );
                     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
                     glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
                     glDrawArrays( GL_TRIANGLES, 0, 36 );
-
-                    // Obrys
                     glBindVertexArray( lineVAO );
                     glLineWidth( 2.0f );
                     glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
@@ -254,10 +203,9 @@ void rysuj( void ) {
         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
     }
 
-    // 3. Etykiety (Text)
+    // 3. Etykiety
     glUseProgram( 0 );
     glDisable( GL_DEPTH_TEST );
-
     glMatrixMode( GL_PROJECTION ); glLoadMatrixf( &Projection[ 0 ][ 0 ] );
     glMatrixMode( GL_MODELVIEW ); glLoadMatrixf( &View[ 0 ][ 0 ] );
     glColor3f( 0.0f, 0.0f, 0.0f );
@@ -269,18 +217,22 @@ void rysuj( void ) {
         float dirZ = (frontZ > CHART_DEPTH / 2.0f) ? 1.0f : -1.0f;
 
         // Podpisy Serii (Z)
-        for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+        // Jeśli jest ich bardzo dużo (>10), podpisujemy tylko co 2-gą
+        int skipZ = (numSeries > 10) ? 2 : 1;
+        for( size_t i = 0; i < daneProjektu.allData.size(); i += skipZ ) {
             float zPos = i * stepZ + stepZ / 2.0f;
             float tx = frontX + (dirX * 40.0f);
             if( dirX < 0 ) tx -= 50.0f;
             scena.drawString( tx, 0.0f, zPos, daneProjektu.allData[ i ].label );
         }
+        // Tytuł osi Z
+        float titleZ_X = frontX + (dirX * 100.0f);
+        if( dirX < 0 ) titleZ_X -= 60.0f;
+        scena.drawString( titleZ_X, -50.0f, CHART_DEPTH / 2.0f, "Serie (Z)" );
 
         // Podpisy Danych (X)
-        // Jeśli histogram (dużo danych), podpisuj co 5-ty, żeby nie było bałaganu
-        int skip = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? 5 : 1;
-
-        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j += skip ) {
+        int skipX = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? 5 : 1;
+        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j += skipX ) {
             float posX = j * stepX + stepX / 2.0f;
             std::string label = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? std::to_string( j ) : "D" + std::to_string( j + 1 );
             float tz = frontZ + (dirZ * 40.0f);
@@ -288,6 +240,7 @@ void rysuj( void ) {
         }
     }
 
+    scena.drawLegend( screen_width, screen_height, seriesNames, seriesColors );
     glEnable( GL_DEPTH_TEST );
     glutSwapBuffers();
 }
