@@ -26,7 +26,9 @@ Scieżki do plikow
 "DANE/Ruch_strony.txt"      - malo kolumn
 "DANE/Sprzedarz.txt"      - malo kolumn
 
+
 */
+
 const std::string DATA_PATH = "DANE/Zuzycie_energi.txt";
 
 // Obiekty
