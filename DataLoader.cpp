@@ -1,4 +1,4 @@
-#include "DataLoader.h"
+﻿#include "DataLoader.h"
 
 bool DataLoader::load( const std::string& filename ) {
     std::ifstream file( filename );
@@ -12,19 +12,21 @@ bool DataLoader::load( const std::string& filename ) {
     while( std::getline( file, line ) ) {
         if( line.empty() ) continue;
 
+        // Pomijamy ewentualne nagłówki typu, jeśli zostały w pliku, 
+        // ale generalnie kod zakłada czyste dane.
+        if( line.find( "TYPE" ) != std::string::npos ) continue;
+
         std::stringstream ss( line );
         DataRecord record;
-
-        // Pierwsze s�owo to etykieta (np. "Spring")
         ss >> record.label;
 
-        // Reszta to liczby (warto�ci wykresu)
         float val;
         while( ss >> val ) {
             record.values.push_back( val );
         }
-
-        allData.push_back( record );
+        if( !record.values.empty() ) {
+            allData.push_back( record );
+        }
     }
 
     file.close();

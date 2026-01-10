@@ -4,7 +4,7 @@
 #include <string>
 #include <algorithm>
 #include <cmath>
-#include <cfloat> // dla FLT_MAX
+#include <cfloat> 
 #include "GL/glew.h"
 #include "GL/freeglut.h"
 #include "shaderLoader.h"
@@ -13,21 +13,35 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
+
 /*
 Scieżki do plikow
 
-"DANE/dane.txt"    
-"DANE/Gielda.txt"       - duzo kolumn 
-"DANE/Klimat_ekstremalny.txt"       - duzo kolumn 
-"DANE/Matematyka_fale.txt"      - duzo kolumn 
-"DANE/Stress_Test.txt"      - malo kolumn 
+"DANE/dane.txt"
+"DANE/Gielda.txt"       - duzo kolumn
+"DANE/Klimat_ekstremalny.txt"       - duzo kolumn
+"DANE/Matematyka_fale.txt"      - duzo kolumn
+"DANE/Stress_Test.txt"      - malo kolumn
 
 "DANE/Zuzycie_energi.txt"       - malo kolumn
 "DANE/Ruch_strony.txt"      - malo kolumn
 "DANE/Sprzedarz.txt"      - malo kolumn
 
 */
-const std::string DATA_PATH = "DANE/Zuzycie_energi.txt";
+
+// --- KONFIGURACJA ---
+const std::string DATA_PATH = "DANE/dane_histogram.txt"; // lub "dane.txt"
+
+// TYPY WYKRESÓW
+enum ChartType {
+    CHART_BAR,      // Klasyczne grube słupki
+    CHART_HISTOGRAM // Cienkie ścianki (wodospad)
+};
+
+// ZMIEŃ TĘ STAŁĄ, ABY PRZEŁĄCZAĆ WIDOK
+const ChartType CURRENT_CHART_TYPE = CHART_HISTOGRAM;
+
+// --------------------
 
 // Obiekty
 DataLoader daneProjektu;
@@ -43,18 +57,20 @@ double popX, popZ, popD;
 GLuint programID, MVP_id, model_id, materialdiffuse_id, materialambient_id, materialspecular_id, materialshine_id, lightColor_id, lightPos_id;
 unsigned int cubeVAO, cubeVBO;
 unsigned int lineVAO, lineVBO;
+
 const float CHART_WIDTH = 600.0f;
 const float CHART_HEIGHT = 400.0f;
 const float CHART_DEPTH = 600.0f;
 
 glm::vec3 seriesColors[] = {
-    glm::vec3( 1.0f, 0.4f, 0.6f ),
-    glm::vec3( 0.6f, 0.5f, 1.0f ),
-    glm::vec3( 0.4f, 0.9f, 1.0f ),
-    glm::vec3( 0.5f, 1.0f, 0.5f )
+    glm::vec3( 0.9f, 0.9f, 0.2f ), // Żółty
+    glm::vec3( 0.2f, 0.2f, 0.9f ), // Niebieski
+    glm::vec3( 0.2f, 0.7f, 0.2f ), // Zielony
+    glm::vec3( 0.9f, 0.2f, 0.2f )  // Czerwony
 };
+
 void setupCube() {
-    // --- ISTNIEJĄCY KOD DLA WYPEŁNIENIA (v[]) ---
+    // Wypełnienie (Cube)
     float v[] = {
         -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f, 0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f,
         0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 1.0f, -0.5f, 0.0f, 0.0f, -1.0f, -0.5f, 0.0f, -0.5f, 0.0f, 0.0f, -1.0f,
@@ -72,99 +88,79 @@ void setupCube() {
     glGenVertexArrays( 1, &cubeVAO ); glGenBuffers( 1, &cubeVBO );
     glBindVertexArray( cubeVAO ); glBindBuffer( GL_ARRAY_BUFFER, cubeVBO );
     glBufferData( GL_ARRAY_BUFFER, sizeof( v ), v, GL_STATIC_DRAW );
-    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) 0 ); glEnableVertexAttribArray( 0 );
-    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), ( void* ) ( 3 * sizeof( float ) ) ); glEnableVertexAttribArray( 1 );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)0 ); glEnableVertexAttribArray( 0 );
+    glVertexAttribPointer( 1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof( float ), (void*)(3 * sizeof( float )) ); glEnableVertexAttribArray( 1 );
 
-    // --- NOWY KOD DLA CZYSTYCH KRAWĘDZI (BEZ PRZEKĄTNYCH) ---
+    // Krawędzie (Line Loop)
     float lines[] = {
-        // Dolna rama
         -0.5f, 0.0f, -0.5f, 0.5f, 0.0f, -0.5f,
         0.5f, 0.0f, -0.5f, 0.5f, 0.0f, 0.5f,
         0.5f, 0.0f, 0.5f, -0.5f, 0.0f, 0.5f,
         -0.5f, 0.0f, 0.5f, -0.5f, 0.0f, -0.5f,
-        // Górna rama
+
         -0.5f, 1.0f, -0.5f, 0.5f, 1.0f, -0.5f,
         0.5f, 1.0f, -0.5f, 0.5f, 1.0f, 0.5f,
         0.5f, 1.0f, 0.5f, -0.5f, 1.0f, 0.5f,
         -0.5f, 1.0f, 0.5f, -0.5f, 1.0f, -0.5f,
-        // Pionowe krawędzie
+
         -0.5f, 0.0f, -0.5f, -0.5f, 1.0f, -0.5f,
         0.5f, 0.0f, -0.5f, 0.5f, 1.0f, -0.5f,
         0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.5f,
         -0.5f, 0.0f, 0.5f, -0.5f, 1.0f, 0.5f
     };
-
     glGenVertexArrays( 1, &lineVAO ); glGenBuffers( 1, &lineVBO );
     glBindVertexArray( lineVAO ); glBindBuffer( GL_ARRAY_BUFFER, lineVBO );
     glBufferData( GL_ARRAY_BUFFER, sizeof( lines ), lines, GL_STATIC_DRAW );
-    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), ( void* ) 0 );
+    glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), (void*)0 );
     glEnableVertexAttribArray( 0 );
 }
 
 void rysuj( void ) {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    // Obliczanie macierzy widoku
+    // Obliczanie macierzy widoku i sortowanie narożników
     glm::mat4 Projection = glm::perspective( glm::radians( 45.0f ), (float)screen_width / screen_height, 0.1f, 5000.0f );
-
     glm::mat4 View = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0, 0, kameraD ) );
     View = glm::rotate( View, (float)glm::radians( kameraZ ), glm::vec3( 1, 0, 0 ) );
     View = glm::rotate( View, (float)glm::radians( kameraX ), glm::vec3( 0, 1, 0 ) );
-    // Przesuwamy centrum świata do środka wykresu
     View = glm::translate( View, glm::vec3( -CHART_WIDTH / 2.0f, -CHART_HEIGHT / 2.0f, -CHART_DEPTH / 2.0f ) );
 
-    // --- ALGORYTM SORTOWANIA NAROŻNIKÓW ---
-    // Definiujemy 4 narożniki podstawy (Y=0)
     glm::vec4 corners[ 4 ] = {
-        glm::vec4( 0.0f, 0.0f, 0.0f, 1.0f ),            // 0: Lewy-Tył
-        glm::vec4( CHART_WIDTH, 0.0f, 0.0f, 1.0f ),     // 1: Prawy-Tył
-        glm::vec4( CHART_WIDTH, 0.0f, CHART_DEPTH, 1.0f ), // 2: Prawy-Przód
-        glm::vec4( 0.0f, 0.0f, CHART_DEPTH, 1.0f )      // 3: Lewy-Przód
+        glm::vec4( 0.0f, 0.0f, 0.0f, 1.0f ),
+        glm::vec4( CHART_WIDTH, 0.0f, 0.0f, 1.0f ),
+        glm::vec4( CHART_WIDTH, 0.0f, CHART_DEPTH, 1.0f ),
+        glm::vec4( 0.0f, 0.0f, CHART_DEPTH, 1.0f )
     };
 
-    // Transformujemy punkty do przestrzeni widoku (View Space), aby sprawdzić ich głębokość (Z)
-    float maxZ = -FLT_MAX; // Najbliżej kamery (w OpenGL View Space: im większe Z, tym bliżej - uwaga na konwencję)
-    float minZ = FLT_MAX;  // Najdalej od kamery
-
+    float maxZ = -FLT_MAX;
+    float minZ = FLT_MAX;
     int nearestIdx = 0;
     int farthestIdx = 0;
 
     for( int i = 0; i < 4; i++ ) {
         glm::vec4 viewPos = View * corners[ i ];
-        // W View Space: kamera jest w (0,0,0) patrząc w -Z.
-        // Im większa wartość Z (bliższa zeru lub dodatnia), tym bliżej kamery.
-
-        if( viewPos.z > maxZ ) {
-            maxZ = viewPos.z;
-            nearestIdx = i;
-        }
-        if( viewPos.z < minZ ) {
-            minZ = viewPos.z;
-            farthestIdx = i;
-        }
+        if( viewPos.z > maxZ ) { maxZ = viewPos.z; nearestIdx = i; }
+        if( viewPos.z < minZ ) { minZ = viewPos.z; farthestIdx = i; }
     }
 
-    // Pobieramy współrzędne najdalszego rogu (do siatki tła)
     float backX = corners[ farthestIdx ].x;
     float backZ = corners[ farthestIdx ].z;
-
-    // Pobieramy współrzędne najbliższego rogu (do podpisów osi)
     float frontX = corners[ nearestIdx ].x;
     float frontZ = corners[ nearestIdx ].z;
-
-    // --------------------------------------
 
     // 1. Rysowanie środowiska
     glUseProgram( programID );
 
-    // Siatkę (ściany) rysujemy zawsze w narożniku najdalszym (backX, backZ)
+    // NAPRAWA KOLORU SIATKI: Resetujemy kolor w shaderze na jasnoszary
+    glUniform3f( materialdiffuse_id, 0.85f, 0.85f, 0.85f );
     scena.drawGrid( MVP_id, Projection, View, CHART_WIDTH, CHART_HEIGHT, CHART_DEPTH, 50, backX, backZ );
 
-    // Osie i podpisy rysujemy względem obu punktów (ramka łączy back i front)
+    // Resetujemy kolor na czarny dla ramek
+    glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
     scena.drawAxes( MVP_id, Projection, View, CHART_WIDTH, CHART_HEIGHT, CHART_DEPTH, daneProjektu.getMaxValue(),
         backX, backZ, frontX, frontZ );
 
-    // 2. Rysowanie słupków
+    // 2. Rysowanie DANYCH
     glUseProgram( programID );
     float numSeries = (float)daneProjektu.allData.size();
     if( numSeries > 0 ) {
@@ -174,50 +170,93 @@ void rysuj( void ) {
 
         float stepZ = CHART_DEPTH / numSeries;
         float stepX = CHART_WIDTH / numCols;
-        float barWidth = stepX * 0.7f;
-        float barDepth = stepZ * 0.7f;
 
         glBindVertexArray( cubeVAO );
 
-        for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-            glm::vec3 col = seriesColors[ i % 4 ];
-            float zPos = i * stepZ + stepZ / 2.0f;
+        // -------------------------------------------------------------
+        // IF 1: LOGIKA DLA HISTOGRAMU
+        // -------------------------------------------------------------
+        if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
+            float barWidth = stepX;      // Pełna szerokość (stykają się)
+            float barDepth = 10.0f;      // Cienkie w Z
 
-            for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
-                float val = daneProjektu.allData[ i ].values[ j ];
-                float h = ( val / maxVal ) * CHART_HEIGHT;
-                if( h < 0.1f ) h = 0.1f;
+            for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+                glm::vec3 col = seriesColors[ i % 4 ];
+                float zPos = i * stepZ + stepZ / 2.0f;
 
-                float posX = j * stepX + stepX / 2.0f;
+                for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
+                    float val = daneProjektu.allData[ i ].values[ j ];
+                    float h = (val / maxVal) * CHART_HEIGHT;
+                    if( h < 0.1f ) h = 0.1f;
 
-                // Macierze
-                glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
-                Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
-                glm::mat4 MVP_final = Projection * View * Model;
+                    float posX = j * stepX + stepX / 2.0f;
 
-                glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
-                glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
+                    glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
+                    Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
+                    glm::mat4 MVP_final = Projection * View * Model;
 
-                // 1. RYSOWANIE WYPEŁNIENIA (Kolor)
-                glBindVertexArray( cubeVAO );
-                glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-                glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
-                glDrawArrays( GL_TRIANGLES, 0, 36 );
+                    glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
+                    glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
 
-                // 2. RYSOWANIE CZYSTYCH KRAWĘDZI (Czarny obrys)
-                glBindVertexArray( lineVAO );
-                glLineWidth( 2.0f ); // Grubość obramowania
-                glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f ); // Czarny kolor
-                glDrawArrays( GL_LINES, 0, 24 ); // 12 linii * 2 punkty = 24
+                    // Wypełnienie
+                    glBindVertexArray( cubeVAO );
+                    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+                    glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
+                    glDrawArrays( GL_TRIANGLES, 0, 36 );
+
+                    // Kreski oddzielające (Obrys) - chcemy je też w histogramie!
+                    glBindVertexArray( lineVAO );
+                    glLineWidth( 1.0f );
+                    glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
+                    glDrawArrays( GL_LINES, 0, 24 );
+                }
             }
         }
-        // Powrót do trybu wypełnienia dla innych elementów
+        // -------------------------------------------------------------
+        // IF 2 (ELSE): LOGIKA DLA KLASYCZNYCH SŁUPKÓW (BAR)
+        // -------------------------------------------------------------
+        else {
+            float barWidth = stepX * 0.7f; // Przerwy między słupkami
+            float barDepth = stepZ * 0.7f;
+
+            for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+                glm::vec3 col = seriesColors[ i % 4 ];
+                float zPos = i * stepZ + stepZ / 2.0f;
+
+                for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
+                    float val = daneProjektu.allData[ i ].values[ j ];
+                    float h = (val / maxVal) * CHART_HEIGHT;
+                    if( h < 0.1f ) h = 0.1f;
+
+                    float posX = j * stepX + stepX / 2.0f;
+
+                    glm::mat4 Model = glm::translate( glm::mat4( 1.0f ), glm::vec3( posX, 0.0f, zPos ) );
+                    Model = glm::scale( Model, glm::vec3( barWidth, h, barDepth ) );
+                    glm::mat4 MVP_final = Projection * View * Model;
+
+                    glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVP_final[ 0 ][ 0 ] );
+                    glUniformMatrix4fv( model_id, 1, GL_FALSE, &Model[ 0 ][ 0 ] );
+
+                    // Wypełnienie
+                    glBindVertexArray( cubeVAO );
+                    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+                    glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
+                    glDrawArrays( GL_TRIANGLES, 0, 36 );
+
+                    // Obrys
+                    glBindVertexArray( lineVAO );
+                    glLineWidth( 2.0f );
+                    glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
+                    glDrawArrays( GL_LINES, 0, 24 );
+                }
+            }
+        }
         glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
     }
 
     // 3. Etykiety (Text)
     glUseProgram( 0 );
-    glDisable( GL_DEPTH_TEST ); // Napisy zawsze na wierzchu
+    glDisable( GL_DEPTH_TEST );
 
     glMatrixMode( GL_PROJECTION ); glLoadMatrixf( &Projection[ 0 ][ 0 ] );
     glMatrixMode( GL_MODELVIEW ); glLoadMatrixf( &View[ 0 ][ 0 ] );
@@ -226,27 +265,24 @@ void rysuj( void ) {
     if( numSeries > 0 ) {
         float stepZ = CHART_DEPTH / numSeries;
         float stepX = CHART_WIDTH / daneProjektu.allData[ 0 ].values.size();
-
-        // Obliczamy wektory "na zewnątrz" od środka wykresu
-        // Środek wykresu to (W/2, 0, D/2)
-        // Kierunek X = (frontX - W/2) -> znormalizowany znak
         float dirX = (frontX > CHART_WIDTH / 2.0f) ? 1.0f : -1.0f;
         float dirZ = (frontZ > CHART_DEPTH / 2.0f) ? 1.0f : -1.0f;
 
-        // 1. Etykiety Serii (Z)
-        // Rysujemy je wzdłuż krawędzi frontX
+        // Podpisy Serii (Z)
         for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
             float zPos = i * stepZ + stepZ / 2.0f;
             float tx = frontX + (dirX * 40.0f);
-            if( dirX < 0 ) tx -= 50.0f; // Korekta wyrównania tekstu
+            if( dirX < 0 ) tx -= 50.0f;
             scena.drawString( tx, 0.0f, zPos, daneProjektu.allData[ i ].label );
         }
 
-        // 2. Etykiety Kolumn (X)
-        // Rysujemy je wzdłuż krawędzi frontZ
-        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j++ ) {
+        // Podpisy Danych (X)
+        // Jeśli histogram (dużo danych), podpisuj co 5-ty, żeby nie było bałaganu
+        int skip = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? 5 : 1;
+
+        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j += skip ) {
             float posX = j * stepX + stepX / 2.0f;
-            std::string label = "D" + std::to_string( j + 1 );
+            std::string label = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? std::to_string( j ) : "D" + std::to_string( j + 1 );
             float tz = frontZ + (dirZ * 40.0f);
             scena.drawString( posX - 10.0f, 0, tz, label );
         }
