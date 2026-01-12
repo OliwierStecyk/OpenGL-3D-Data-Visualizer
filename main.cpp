@@ -50,7 +50,9 @@ const std::string DATA_PATH = "DANE/Klimat_lata.txt";
 
 enum ChartType {
     CHART_BAR,
-    CHART_HISTOGRAM
+    CHART_HISTOGRAM,
+    CHART_LINE,
+    CHART_SCATTER
 };
 
 ChartType CURRENT_CHART_TYPE = CHART_BAR;
@@ -64,6 +66,11 @@ int screen_width = 1024, screen_height = 768;
 double kameraX = 25.0, kameraZ = -20.0, kameraD = -1600.0;
 int pozycjaMyszyX, pozycjaMyszyY, mbutton;
 double popX, popZ, popD;
+
+bool animateLine = false;
+float animTimer = 0.0f;
+int animatedStep = 0;
+float animSpeed = 1.5f; // punktów na sekundę
 
 // Shadery
 GLuint programID, MVP_id, model_id, materialdiffuse_id, materialambient_id, materialspecular_id, materialshine_id, lightColor_id, lightPos_id;
@@ -136,24 +143,38 @@ void klawisz( GLubyte key, int x, int y ) {
         daneZmienione = true;
         break;
 
-    case 'h': // Przełączanie trybu: Histogram / Słupki
+    case 'h': // Przełączanie trybu: Histogram / Słupki / Line / Scatter
     case 'H':
-        if( CURRENT_CHART_TYPE == CHART_BAR )
-            CURRENT_CHART_TYPE = CHART_HISTOGRAM;
-        else
-            CURRENT_CHART_TYPE = CHART_BAR;
+        CURRENT_CHART_TYPE = ( ChartType ) ( ( CURRENT_CHART_TYPE + 1 ) % 4 );
+        animateLine = false;
+        animatedStep = 0;
+        animTimer = 0.0f;
         glutPostRedisplay();
+        break;
+
+    case 'a':
+    case 'A':
+        if( CURRENT_CHART_TYPE == CHART_LINE ) {
+            animateLine = !animateLine;
+            animatedStep = 0;
+            animTimer = 0.0f;
+            glutPostRedisplay();
+        }
         break;
     }
 
     if( daneZmienione ) {
         if( daneProjektu.load( listaPlikow[ aktualnyPlikIdx ] ) ) {
-            // Zmiana tytułu okna, żebyś wiedział co oglądasz
+            // Reset animacji przy zmianie pliku
+            animateLine = false;
+            animatedStep = 0;
+            animTimer = 0.0f;
+
             std::string nowyTytul = "Plik: " + listaPlikow[ aktualnyPlikIdx ];
             glutSetWindowTitle( nowyTytul.c_str() );
 
             printf( "Zaladowano: %s\n", listaPlikow[ aktualnyPlikIdx ].c_str() );
-            glutPostRedisplay(); // Odśwież obraz
+            glutPostRedisplay();
         }
         else {
             printf( "BLAD: Nie mozna wczytac %s\n", listaPlikow[ aktualnyPlikIdx ].c_str() );
@@ -190,6 +211,19 @@ glm::vec3 generujKolor( int i, int liczbaSerii ) {
 
 void rysuj( void ) {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+
+    static int lastTime = glutGet( GLUT_ELAPSED_TIME );
+    int now = glutGet( GLUT_ELAPSED_TIME );
+    float deltaTime = ( now - lastTime ) / 1000.0f;
+    lastTime = now;
+
+    if( animateLine && CURRENT_CHART_TYPE == CHART_LINE ) {
+        animTimer += deltaTime;
+        if( animTimer >= 1.0f / animSpeed ) {
+            animTimer = 0.0f;
+            animatedStep++;
+        }
+    }
 
     glm::mat4 Projection = glm::perspective( glm::radians( 45.0f ), (float)screen_width / screen_height, 0.1f, 5000.0f );
     glm::mat4 View = glm::translate( glm::mat4( 1.0f ), glm::vec3( 0, 0, kameraD ) );
@@ -240,9 +274,10 @@ void rysuj( void ) {
         glBindVertexArray( cubeVAO );
 
         for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-            seriesNames.push_back( daneProjektu.allData[ i ].label );
-            glm::vec3 col = generujKolor( i, numCols );
-            dynamicznaPaleta.push_back( col ); // Zapisujemy do legendy
+            seriesNames.push_back(daneProjektu.allData[i].label);
+            glm::vec3 col = generujKolor(i, numCols);
+            dynamicznaPaleta.push_back(col);
+
             float zPos = i * stepZ + stepZ / 2.0f;
 
             if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
@@ -265,6 +300,111 @@ void rysuj( void ) {
                     glLineWidth( 1.0f );
                     glUniform3f( materialdiffuse_id, 0.0f, 0.0f, 0.0f );
                     glDrawArrays( GL_LINES, 0, 24 );
+                }
+            }
+            else if( CURRENT_CHART_TYPE == CHART_LINE ) {
+
+                size_t maxJ = daneProjektu.allData[ i ].values.size();
+                if( animateLine )
+                    maxJ = std::min( ( size_t ) animatedStep, maxJ );
+
+                for( size_t j = 0; j < maxJ; j++ ) {
+
+                    float val = daneProjektu.allData[ i ].values[ j ];
+                    float h = ( val / maxVal ) * CHART_HEIGHT;
+                    if( h < 0.1f ) h = 0.1f;
+
+                    float posX = j * stepX + stepX / 2.0f;
+
+                    /* --- punkt --- */
+                    glm::mat4 PointM = glm::translate(
+                        glm::mat4( 1.0f ),
+                        glm::vec3( posX, h, zPos )
+                    );
+                    PointM = glm::scale( PointM, glm::vec3( 8.0f, 8.0f, 8.0f ) );
+
+                    glm::mat4 MVPp = Projection * View * PointM;
+                    glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVPp[ 0 ][ 0 ] );
+                    glUniformMatrix4fv( model_id, 1, GL_FALSE, &PointM[ 0 ][ 0 ] );
+                    glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
+                    glBindVertexArray( cubeVAO );
+                    glDrawArrays( GL_TRIANGLES, 0, 36 );
+
+                    /* --- linia do poprzedniego --- */
+                    if( j > 0 ) {
+                        float pv = daneProjektu.allData[ i ].values[ j - 1 ];
+                        float ph = ( pv / maxVal ) * CHART_HEIGHT;
+                        float px = ( j - 1 ) * stepX + stepX / 2.0f;
+
+                        glm::vec3 p1( px, ph, zPos );
+                        glm::vec3 p2( posX, h, zPos );
+                        glm::vec3 d = p2 - p1;
+
+                        glm::mat4 LineM = glm::translate(
+                            glm::mat4( 1.0f ),
+                            p1 + d * 0.5f
+                        );
+                        LineM = glm::rotate(
+                            LineM,
+                            atan2( d.y, d.x ),
+                            glm::vec3( 0, 0, 1 )
+                        );
+                        LineM = glm::scale(
+                            LineM,
+                            glm::vec3( glm::length( d ), 3.0f, 3.0f )
+                        );
+
+                        glm::mat4 MVPl = Projection * View * LineM;
+                        glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVPl[ 0 ][ 0 ] );
+                        glUniformMatrix4fv( model_id, 1, GL_FALSE, &LineM[ 0 ][ 0 ] );
+                        glBindVertexArray( cubeVAO );
+                        glDrawArrays( GL_TRIANGLES, 0, 36 );
+                    }
+                }
+                if( animateLine && CURRENT_CHART_TYPE == CHART_LINE ) {
+                    animTimer += deltaTime;
+                    if( animTimer >= 1.0f / animSpeed ) {
+                        animTimer = 0.0f;
+                        animatedStep++;
+                    }
+                }
+                if( animateLine && CURRENT_CHART_TYPE == CHART_LINE ) {
+                    animTimer += deltaTime;
+                    if( animTimer >= 1.0f / animSpeed ) {
+                        animTimer = 0.0f;
+                        animatedStep++;
+                        // Stop animacji, jeśli wszystkie punkty narysowane
+                        if( animatedStep >= daneProjektu.allData[ 0 ].values.size() )
+                            animateLine = false;
+                    }
+                }
+            }
+            else if( CURRENT_CHART_TYPE == CHART_SCATTER ) {
+
+                for( size_t j = 0; j < daneProjektu.allData[ i ].values.size(); j++ ) {
+
+                    float val = daneProjektu.allData[ i ].values[ j ];
+                    float h = ( val / maxVal ) * CHART_HEIGHT;
+                    if( h < 0.1f ) h = 0.1f;
+
+                    float posX = j * stepX + stepX / 2.0f;
+
+                    // --- punkt ---
+                    glm::mat4 PointM = glm::translate(
+                        glm::mat4( 1.0f ),
+                        glm::vec3( posX, h, zPos )
+                    );
+
+                    // mniejsze niż w LINE
+                    PointM = glm::scale( PointM, glm::vec3( 6.0f, 6.0f, 6.0f ) );
+
+                    glm::mat4 MVPp = Projection * View * PointM;
+                    glUniformMatrix4fv( MVP_id, 1, GL_FALSE, &MVPp[ 0 ][ 0 ] );
+                    glUniformMatrix4fv( model_id, 1, GL_FALSE, &PointM[ 0 ][ 0 ] );
+
+                    glUniform3f( materialdiffuse_id, col.r, col.g, col.b );
+                    glBindVertexArray( cubeVAO );
+                    glDrawArrays( GL_TRIANGLES, 0, 36 );
                 }
             }
             else {
@@ -348,7 +488,7 @@ void rysuj( void ) {
         }
     }
 
-    scena.drawLegend( screen_width, screen_height, seriesNames, dynamicznaPaleta );
+    scena.drawLegend( screen_width, screen_height, seriesNames, dynamicznaPaleta  );
     glEnable( GL_DEPTH_TEST );
     glutSwapBuffers();
 }
