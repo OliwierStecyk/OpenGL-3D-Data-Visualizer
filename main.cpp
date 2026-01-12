@@ -31,14 +31,29 @@ Scieżki do plikow
 
 */
 // --- KONFIGURACJA ---
-const std::string DATA_PATH = "DANE/dane_histogram.txt";
+std::vector<std::string> listaPlikow = {
+    "DANE/dane.txt",
+    "DANE/Gielda.txt" ,
+    "DANE/Klimat_ekstremalny.txt" ,
+    "DANE/Matematyka_fale.txt",
+    "DANE/Stress_Test.txt",
+
+    "DANE/Zuzycie_energi.txt",
+    "DANE/Ruch_strony.txt",
+    "DANE/Sprzedarz.txt",
+    "DANE/Klimat_lata.txt",
+    "DANE/dane_histogram.txt"
+};
+int aktualnyPlikIdx = 0; // Indeks obecnie wyświetlanego pliku
+
+const std::string DATA_PATH = "DANE/Klimat_lata.txt";
 
 enum ChartType {
     CHART_BAR,
     CHART_HISTOGRAM
 };
 
-const ChartType CURRENT_CHART_TYPE = CHART_HISTOGRAM;
+ChartType CURRENT_CHART_TYPE = CHART_BAR;
 
 // Obiekty
 DataLoader daneProjektu;
@@ -101,6 +116,77 @@ void setupCube() {
     glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), (void*)0 );
     glEnableVertexAttribArray( 0 );
 }
+void klawisz( GLubyte key, int x, int y ) {
+    bool daneZmienione = false;
+
+    switch( key ) {
+    case 27: // Esc
+        exit( 0 );
+        break;
+
+    case 'n': // Następny plik
+    case 'N':
+        aktualnyPlikIdx = ( aktualnyPlikIdx + 1 ) % listaPlikow.size();
+        daneZmienione = true;
+        break;
+
+    case 'p': // Poprzedni plik
+    case 'P':
+        aktualnyPlikIdx = ( aktualnyPlikIdx - 1 + ( int ) listaPlikow.size() ) % listaPlikow.size();
+        daneZmienione = true;
+        break;
+
+    case 'h': // Przełączanie trybu: Histogram / Słupki
+    case 'H':
+        if( CURRENT_CHART_TYPE == CHART_BAR )
+            CURRENT_CHART_TYPE = CHART_HISTOGRAM;
+        else
+            CURRENT_CHART_TYPE = CHART_BAR;
+        glutPostRedisplay();
+        break;
+    }
+
+    if( daneZmienione ) {
+        if( daneProjektu.load( listaPlikow[ aktualnyPlikIdx ] ) ) {
+            // Zmiana tytułu okna, żebyś wiedział co oglądasz
+            std::string nowyTytul = "Plik: " + listaPlikow[ aktualnyPlikIdx ];
+            glutSetWindowTitle( nowyTytul.c_str() );
+
+            printf( "Zaladowano: %s\n", listaPlikow[ aktualnyPlikIdx ].c_str() );
+            glutPostRedisplay(); // Odśwież obraz
+        }
+        else {
+            printf( "BLAD: Nie mozna wczytac %s\n", listaPlikow[ aktualnyPlikIdx ].c_str() );
+        }
+    }
+}
+
+glm::vec3 generujKolor( int i, int liczbaSerii ) {
+    if( liczbaSerii <= 0 ) return glm::vec3( 0.5f );
+
+    // Rozkładamy barwę (Hue) równomiernie wokół koła kolorów (0.0 do 1.0)
+    float h = ( float ) i / ( float ) liczbaSerii;
+    float s = 0.8f; // Nasycenie (0.8 = żywe kolory)
+    float v = 0.9f; // Jasność (0.9 = jasne kolory)
+
+    // Prosta konwersja HSV do RGB
+    float r, g, b;
+    int j = ( int ) ( h * 6 );
+    float f = h * 6 - j;
+    float p = v * ( 1 - s );
+    float q = v * ( 1 - f * s );
+    float t = v * ( 1 - ( 1 - f ) * s );
+
+    switch( j % 6 ) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+    }
+    return glm::vec3( r, g, b );
+}
 
 void rysuj( void ) {
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
@@ -141,9 +227,11 @@ void rysuj( void ) {
     glUseProgram( programID );
     float numSeries = (float)daneProjektu.allData.size();
     std::vector<std::string> seriesNames;
+    std::vector<glm::vec3> dynamicznaPaleta; // Tu zapiszemy kolory dla legendy
+
 
     if( numSeries > 0 ) {
-        float numCols = (float)daneProjektu.allData[ 0 ].values.size();
+        int  numCols = ( int )daneProjektu.allData[ 0 ].values.size();
         float maxVal = daneProjektu.getMaxValue();
         if( maxVal < 1.0f ) maxVal = 1.0f;
 
@@ -153,7 +241,8 @@ void rysuj( void ) {
 
         for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
             seriesNames.push_back( daneProjektu.allData[ i ].label );
-            glm::vec3 col = seriesColors[ i % seriesColors.size() ];
+            glm::vec3 col = generujKolor( i, numCols );
+            dynamicznaPaleta.push_back( col ); // Zapisujemy do legendy
             float zPos = i * stepZ + stepZ / 2.0f;
 
             if( CURRENT_CHART_TYPE == CHART_HISTOGRAM ) {
@@ -212,36 +301,54 @@ void rysuj( void ) {
     glColor3f( 0.0f, 0.0f, 0.0f );
 
     if( numSeries > 0 ) {
+        int numCols = ( int ) daneProjektu.allData[ 0 ].values.size();
         float stepZ = CHART_DEPTH / numSeries;
-        float stepX = CHART_WIDTH / daneProjektu.allData[ 0 ].values.size();
-        float dirX = (frontX > CHART_WIDTH / 2.0f) ? 1.0f : -1.0f;
-        float dirZ = (frontZ > CHART_DEPTH / 2.0f) ? 1.0f : -1.0f;
+        float stepX = CHART_WIDTH / numCols;
+        float dirX = ( frontX > CHART_WIDTH / 2.0f ) ? 1.0f : -1.0f;
+        float dirZ = ( frontZ > CHART_DEPTH / 2.0f ) ? 1.0f : -1.0f;
+
+        // --- DYNAMICZNY SKIP ---
+        // Obliczamy skip tak, żeby na osi było maksymalnie ok. 12-15 napisów
+        int skipZ = std::max( 1, ( int ) ( numSeries / 9) );
+        int skipX = std::max( 1, ( int ) ( numCols / 9 ) );
 
         // Podpisy Serii (Z)
-        // Jeśli jest ich bardzo dużo (>10), podpisujemy tylko co 2-gą
-        int skipZ = (numSeries > 10) ? 2 : 1;
-        for( size_t i = 0; i < daneProjektu.allData.size(); i += skipZ ) {
-            float zPos = i * stepZ + stepZ / 2.0f;
-            float tx = frontX + (dirX * 40.0f);
-            if( dirX < 0 ) tx -= 50.0f;
-            scena.drawString( tx, 0.0f, zPos, daneProjektu.allData[ i ].label );
+        for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
+            // Rysuj tylko co n-ty element LUB ostatni
+            if( i % skipZ == 0 || i == daneProjektu.allData.size() - 1 ) {
+                float zPos = i * stepZ + stepZ / 2.0f;
+                float tx = frontX + ( dirX * 40.0f );
+                if( dirX < 0 ) tx -= 60.0f;
+                scena.drawString( tx, 0.0f, zPos, daneProjektu.allData[ i ].label );
+            }
         }
+
         // Tytuł osi Z
-        float titleZ_X = frontX + (dirX * 100.0f);
-        if( dirX < 0 ) titleZ_X -= 60.0f;
+        float titleZ_X = frontX + ( dirX * 110.0f );
+        if( dirX < 0 ) titleZ_X -= 70.0f;
         scena.drawString( titleZ_X, -50.0f, CHART_DEPTH / 2.0f, "Serie (Z)" );
 
         // Podpisy Danych (X)
-        int skipX = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? 5 : 1;
-        for( size_t j = 0; j < daneProjektu.allData[ 0 ].values.size(); j += skipX ) {
-            float posX = j * stepX + stepX / 2.0f;
-            std::string label = (CURRENT_CHART_TYPE == CHART_HISTOGRAM) ? std::to_string( j ) : "D" + std::to_string( j + 1 );
-            float tz = frontZ + (dirZ * 40.0f);
-            scena.drawString( posX - 10.0f, 0, tz, label );
+        for( size_t j = 0; j < ( size_t ) numCols; j++ ) {
+            // Rysuj tylko co n-ty element LUB ostatni
+            if( j % skipX == 0 || j == ( size_t ) numCols - 1 ) {
+                float posX = j * stepX + stepX / 2.0f;
+
+                // Skracanie nazwy: Dla histogramu sam numer, dla reszty D+numer
+                std::string label;
+                if( CURRENT_CHART_TYPE == CHART_HISTOGRAM )
+                    label = std::to_string( j );
+                else
+                    label = "D" + std::to_string( j + 1 );
+
+                float tz = frontZ + ( dirZ * 40.0f );
+                if( dirZ < 0 ) tz -= 10.0f;
+                scena.drawString( posX - 10.0f, 0, tz, label );
+            }
         }
     }
 
-    scena.drawLegend( screen_width, screen_height, seriesNames, seriesColors );
+    scena.drawLegend( screen_width, screen_height, seriesNames, dynamicznaPaleta );
     glEnable( GL_DEPTH_TEST );
     glutSwapBuffers();
 }
@@ -254,7 +361,6 @@ void ruch( int x, int y ) {
 }
 
 void rozmiar( int w, int h ) { screen_width = w; screen_height = h; glViewport( 0, 0, w, h ); }
-void klawisz( GLubyte key, int x, int y ) { if( key == 27 ) exit( 0 ); }
 
 int main( int argc, char** argv ) {
     glutInit( &argc, argv );
@@ -266,7 +372,10 @@ int main( int argc, char** argv ) {
     glEnable( GL_DEPTH_TEST );
     glClearColor( 1.0f, 1.0f, 1.0f, 1.0f );
 
-    if( !daneProjektu.load( DATA_PATH ) ) return 1;
+    if( !daneProjektu.load( listaPlikow[ aktualnyPlikIdx ] ) ) {
+        printf( "Blad wczytywania pierwszego pliku!\n" );
+        // return 1; // Można kontynuować, może inny plik zadziała
+    }
     programID = loadShaders( "vertex_shader.glsl", "fragment_shader.glsl" );
 
     MVP_id = glGetUniformLocation( programID, "MVP" );
