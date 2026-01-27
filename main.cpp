@@ -395,7 +395,6 @@ void rysuj( void ) {
                         glm::vec3( posX, h, zPos )
                     );
 
-                    // mniejsze niż w LINE
                     PointM = glm::scale( PointM, glm::vec3( 6.0f, 6.0f, 6.0f ) );
 
                     glm::mat4 MVPp = Projection * View * PointM;
@@ -448,13 +447,11 @@ void rysuj( void ) {
         float dirZ = ( frontZ > CHART_DEPTH / 2.0f ) ? 1.0f : -1.0f;
 
         // --- DYNAMICZNY SKIP ---
-        // Obliczamy skip tak, żeby na osi było maksymalnie ok. 12-15 napisów
         int skipZ = std::max( 1, ( int ) ( numSeries / 9) );
         int skipX = std::max( 1, ( int ) ( numCols / 9 ) );
 
         // Podpisy Serii (Z)
         for( size_t i = 0; i < daneProjektu.allData.size(); i++ ) {
-            // Rysuj tylko co n-ty element LUB ostatni
             if( i % skipZ == 0 || i == daneProjektu.allData.size() - 1 ) {
                 float zPos = i * stepZ + stepZ / 2.0f;
                 float tx = frontX + ( dirX * 40.0f );
@@ -463,18 +460,13 @@ void rysuj( void ) {
             }
         }
 
-        // Tytuł osi Z
         float titleZ_X = frontX + ( dirX * 110.0f );
         if( dirX < 0 ) titleZ_X -= 70.0f;
         scena.drawString( titleZ_X, -50.0f, CHART_DEPTH / 2.0f, "Serie (Z)" );
 
-        // Podpisy Danych (X)
         for( size_t j = 0; j < ( size_t ) numCols; j++ ) {
-            // Rysuj tylko co n-ty element LUB ostatni
             if( j % skipX == 0 || j == ( size_t ) numCols - 1 ) {
                 float posX = j * stepX + stepX / 2.0f;
-
-                // Skracanie nazwy: Dla histogramu sam numer, dla reszty D+numer
                 std::string label;
                 if( CURRENT_CHART_TYPE == CHART_HISTOGRAM )
                     label = std::to_string( j );
