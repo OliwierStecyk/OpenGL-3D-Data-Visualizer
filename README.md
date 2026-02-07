@@ -1,72 +1,68 @@
 # 3D Data Visualizer (OpenGL)
 
 ---
-## 📋 Opis projektu
-Aplikacja służąca do wizualizacji zbiorów danych w przestrzeni 3D. Projekt realizowany w ramach przedmiotu Grafika Komputerowa. Program pozwala na generowanie histogramów oraz wykresów słupkowych 3D na podstawie wczytanych plików danych.
+## 📋 Project Description
+An application for visualizing data sets in 3D space.  
+This project was developed as part of the *Computer Graphics* course.  
+The program enables generation of 3D histograms and bar charts based on loaded data files.
 
 ---
-## 🚀 Funkcje
-- **Wizualizacja 3D:** Renderowanie danych w formie słupków 3D.
-- **Wczytywanie danych:** Możliwość wyboru pliku z danymi przez użytkownika.
-- **Interfejs:** Siatka (grid), znaczniki oraz opisy osi (X, Y, Z).
-- **Analiza:** Automatyczne generowanie histogramów.
-
+## 🚀 Features
+- **3D Visualization:** Rendering data as 3D bars.
+- **Data Loading:** User-selectable input data files.
+- **Interface:** Grid, markers, and labeled X, Y, Z axes.
+- **Analysis:** Automatic histogram generation.
 
 ---
-## 📸 Galeria
+## 📸 Gallery
 
-## 📸 Galeria
-
-| Wizualizacja Słupkowa | Wykres Liniowy (Serie) | Chmura Punktów |
+| Bar Visualization | Line Plot (Series) | Point Cloud |
 | :---: | :---: | :---: |
-| ![Bars](images/bar.png) | ![Lines](images/line.png) | ![Scatter](images/scatter.png) |
-
-
+| ![Bars](image/bar.png) | ![Lines](image/line.png) | ![Scatter](image/scatter.png) |
 
 ---
-## ⚙️ Technologie i Matematyka
-Projekt wykorzystuje nowoczesny potok programowania karty graficznej (Programmable Pipeline):
-*   **Shaders (GLSL):** Autorskie shadery wierzchołków i fragmentów obsługujące model oświetlenia Phonga (Ambient, Diffuse, Specular).
-*   **GLM (OpenGL Mathematics):** Zaawansowane operacje na macierzach transformacji (Model-View-Projection).
-*   **Buforowanie VBO/VAO:** Wysoka wydajność dzięki przetrzymywaniu geometrii bezpośrednio w pamięci karty graficznej.
-*   **Dynamic File Parsing:** System inteligentnego wczytywania plików tekstowych obsługujący niestandardowe separatory i etykiety.
-
-
----
-## 📂 Struktura plików
-- `main.cpp` - Główna pętla programu i inicjalizacja.
-- `shadersLoader.cpp/h` - Obsługa i kompilacja shaderów GLSL.
-- `tekstura.cpp/h` - Zarządzanie teksturami i materiałami.
-- `*.glsl` - Kody źródłowe shaderów wierzchołków i fragmentów.
+## ⚙️ Technologies & Mathematics
+The project uses the modern **programmable graphics pipeline**:
+- **Shaders (GLSL):** Custom vertex and fragment shaders implementing the Phong lighting model (Ambient, Diffuse, Specular).
+- **GLM (OpenGL Mathematics):** Advanced matrix operations for Model-View-Projection transformations.
+- **VBO/VAO Buffers:** High performance through storing geometry directly in GPU memory.
+- **Dynamic File Parsing:** Intelligent text file loader supporting custom separators and labels.
 
 ---
-## 🎮 Sterowanie
+## 📂 File Structure
+- `main.cpp` – Main application loop and initialization.
+- `shadersLoader.cpp/h` – GLSL shader compilation and management.
+- `tekstura.cpp/h` – Texture and material handling.
+- `*.glsl` – Vertex and fragment shader source files.
 
-| Klawisz / Mysz | Akcja |
+---
+## 🎮 Controls
+
+| Key / Mouse | Action |
 | :--- | :--- |
-| **LPM + Ruch** | Obracanie sceny (Orbit) |
-| **Scroll / PPM** | Przybliżanie i oddalanie (Zoom) |
-| **Klawisz N** | Załadowanie następnego pliku z danymi |
-| **Klawisz H** | Przełączanie trybu (Słupki / Linie / Punkty) |
-| **ESC** | Wyjście z aplikacji |
+| **LMB + Move** | Scene rotation (Orbit) |
+| **Scroll / RMB** | Zoom in / out |
+| **N key** | Load next data file |
+| **H key** | Toggle mode (Bars / Lines / Points) |
+| **ESC** | Exit application |
 
 ---
-## 🚀 Szybki Start
+## 🚀 Quick Start
 
-### Wymagania
-*   Visual Studio 2019/2022 (Rekomendowane)
-*   Biblioteki: GLEW, FreeGLUT / GLFW
-*   Zestaw danych w formacie `.txt` (Przykłady w folderze `/data`)
-
----
-### Instalacja
-1. Sklonuj repozytorium: `git clone https://github.com/twoj-login/3d-data-visualizer.git`
-2. Otwórz plik `.sln` w Visual Studio.
-3. Upewnij się, że biblioteki są poprawnie podpięte w ustawieniach projektu (Linker/Include).
-4. Skompiluj i uruchom (F5).
+### Requirements
+- Visual Studio 2019/2022 (Recommended)
+- Libraries: GLEW, FreeGLUT / GLFW
+- `.txt` data sets (examples available in the `/data` directory)
 
 ---
+### Installation
+1. Clone the repository:  
+   `git clone https://github.com/your-username/3d-data-visualizer.git`
+2. Open the `.sln` file in Visual Studio.
+3. Ensure all required libraries are properly linked (Linker / Include settings).
+4. Build and run the project (F5).
 
-## 👥 Autorzy
+---
+## 👥 Authors
 - [Oliwier Stecyk](https://github.com/OliwierStecyk)
-- [Jakub Smaga](https://github.com/Heimerin) 
+- [Jakub Smaga](https://github.com/Heimerin)
