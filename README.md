@@ -15,9 +15,12 @@ Aplikacja służąca do wizualizacji zbiorów danych w przestrzeni 3D. Projekt r
 ---
 ## 📸 Galeria
 
+## 📸 Galeria
+
 | Wizualizacja Słupkowa | Wykres Liniowy (Serie) | Chmura Punktów |
 | :---: | :---: | :---: |
-| ![Bars](https://via.placeholder.com/200x150?text=3D+Bar+Chart) | ![Lines](https://via.placeholder.com/200x150?text=3D+Line+Plot) | ![Scatter](https://via.placeholder.com/200x150?text=3D+Scatter) |
+| ![Bars](images/bar.png) | ![Lines](images/line.png) | ![Scatter](images/scatter.png) |
+
 
 
 ---
